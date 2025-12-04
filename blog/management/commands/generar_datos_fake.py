@@ -77,7 +77,7 @@ class Command(BaseCommand):
                 first_name=first_name,
                 last_name=last_name,
                 is_active=True,
-                date_joined=fake.date_time_between(start_date='-2y', end_date='now', tzinfo=timezone.utc)
+                date_joined=fake.date_time_between(start_date='-2y', end_date='now', tzinfo=timezone.UTC)
             )
             usuarios_creados.append(usuario)
             
@@ -114,7 +114,7 @@ class Command(BaseCommand):
             fecha_creacion = fake.date_time_between(
                 start_date='-2y',
                 end_date='now',
-                tzinfo=timezone.utc
+                tzinfo=timezone.UTC
             )
             
             # 80% de los posts publicados
