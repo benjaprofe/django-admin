@@ -106,13 +106,39 @@ Para desplegar este proyecto en producción, consulta la documentación completa
 - 🐧 **[Configuración de Apache](_doc/APACHE.md)** - Guía detallada para Apache + mod_wsgi
 - 📚 **[Índice de Documentación](_doc/README.md)** - Resumen de toda la documentación
 
+### 🚀 Generador Automático de Configuración
+
+Este proyecto incluye un script que genera automáticamente todos los archivos de configuración necesarios para el despliegue:
+
+**Windows:**
+```cmd
+generar_config.bat
+```
+
+**Linux/Mac:**
+```bash
+python generar_config.py
+```
+
+El script te preguntará por:
+- Nombre del proyecto
+- Ruta del proyecto
+- Dominio y configuración
+- Servidor web (Nginx, Apache o ambos)
+- Configuración de Gunicorn
+- Rutas de archivos estáticos y media
+
+Los archivos generados se guardarán en la carpeta `config_generado/` con un resumen de instrucciones.
+
 ### Inicio Rápido para Producción
 
-1. Lee la [Guía General de Despliegue](_doc/DEPLOYMENT.md)
-2. Elige tu servidor web (Nginx recomendado)
-3. Sigue la guía correspondiente (Nginx o Apache)
-4. Configura SSL/HTTPS
-5. Revisa el checklist de seguridad
+1. **Opción A - Automático**: Ejecuta `generar_config.py` y sigue las instrucciones del resumen generado
+2. **Opción B - Manual**: 
+   - Lee la [Guía General de Despliegue](_doc/DEPLOYMENT.md)
+   - Elige tu servidor web (Nginx recomendado)
+   - Sigue la guía correspondiente (Nginx o Apache)
+   - Configura SSL/HTTPS
+   - Revisa el checklist de seguridad
 
 ## Estructura del Proyecto
 
@@ -123,6 +149,9 @@ proyecto/
 │   ├── NGINX.md       # Configuración Nginx
 │   ├── APACHE.md      # Configuración Apache
 │   └── README.md      # Índice de documentación
+├── generar_config.py  # Generador automático de configuración
+├── generar_config.bat  # Script batch para Windows
+├── config_generado/   # Archivos generados (no versionado)
 ├── autenticacion/      # App de autenticación personalizada
 ├── blog/              # App del blog
 │   ├── management/
