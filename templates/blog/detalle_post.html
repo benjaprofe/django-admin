@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.titulo }} - Blog{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                {% if post.imagen %}
+                    <img src="{{ post.imagen.url }}" class="card-img-top" alt="{{ post.titulo }}" style="max-height: 400px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body p-4">
+                    <h1 class="card-title mb-3">{{ post.titulo }}</h1>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                        <div>
+                            <p class="mb-1">
+                                <strong>Autor:</strong> 
+                                <a href="#" class="text-decoration-none">{{ post.autor.get_full_name|default:post.autor.username }}</a>
+                            </p>
+                            <p class="mb-0 text-muted">
+                                <small>
+                                    📅 {{ post.fecha_creacion|date:"d de F, Y" }} 
+                                    {% if post.fecha_publicacion %}
+                                        | Publicado: {{ post.fecha_publicacion|date:"d/m/Y" }}
+                                    {% endif %}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            {% if post.categoria %}
+                                <span class="badge bg-secondary fs-6">{{ post.categoria.nombre }}</span>
+                            {% endif %}
+                            <p class="mb-0 mt-2">
+                                <small class="text-muted">👁️ {{ post.visitas }} visitas</small>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="card-text mt-4">
+                        {{ post.contenido|linebreaks }}
+                    </div>
+                    
+                    {% if user == post.autor %}
+                        <div class="mt-4 pt-3 border-top">
+                            <a href="{% url 'admin:blog_post_change' post.id %}" class="btn btn-warning">Editar en Admin</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Posts relacionados -->
+            {% if posts_relacionados %}
+                <div class="mt-5">
+                    <h3>Posts Relacionados</h3>
+                    <div class="row">
+                        {% for post_rel in posts_relacionados %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ post_rel.titulo|truncatewords:6 }}</h5>
+                                        <p class="card-text"><small class="text-muted">{{ post_rel.fecha_creacion|date:"d/m/Y" }}</small></p>
+                                        <a href="{% url 'detalle_post' post_rel.slug %}" class="btn btn-sm btn-primary">Leer más</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="mt-4 text-center">
+                <a href="{% url 'lista_posts' %}" class="btn btn-outline-primary">← Volver al blog</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

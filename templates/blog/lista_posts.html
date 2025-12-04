@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}Blog - Proyecto Django{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sidebar con categorías y búsqueda -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Filtros</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Búsqueda -->
+                    <form method="get" class="mb-3">
+                        <div class="input-group">
+                            <input type="text" name="q" class="form-control" placeholder="Buscar..." value="{{ query }}">
+                            <button class="btn btn-primary" type="submit">🔍</button>
+                        </div>
+                    </form>
+                    
+                    <!-- Ordenamiento -->
+                    <div class="mb-3">
+                        <label class="form-label">Ordenar por:</label>
+                        <select class="form-select" onchange="window.location.href='?orden=' + this.value + '{% if query %}&q={{ query }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}'">
+                            <option value="recientes" {% if orden == 'recientes' %}selected{% endif %}>Más recientes</option>
+                            <option value="antiguos" {% if orden == 'antiguos' %}selected{% endif %}>Más antiguos</option>
+                            <option value="populares" {% if orden == 'populares' %}selected{% endif %}>Más populares</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Categorías -->
+                    <div>
+                        <label class="form-label">Categorías:</label>
+                        <div class="list-group">
+                            <a href="{% url 'lista_posts' %}" class="list-group-item list-group-item-action {% if not categoria_id %}active{% endif %}">
+                                Todas ({{ page_obj.paginator.count }})
+                            </a>
+                            {% for categoria in categorias %}
+                                <a href="?categoria={{ categoria.id }}{% if query %}&q={{ query }}{% endif %}{% if orden %}&orden={{ orden }}{% endif %}" 
+                                   class="list-group-item list-group-item-action {% if categoria_id == categoria.id|stringformat:'s' %}active{% endif %}">
+                                    {{ categoria.nombre }} ({{ categoria.total }})
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if user.is_authenticated %}
+                <div class="card mt-3">
+                    <div class="card-body text-center">
+                        <a href="{% url 'crear_post' %}" class="btn btn-success w-100 mb-2">✏️ Crear Post</a>
+                        <a href="{% url 'mis_posts' %}" class="btn btn-outline-primary w-100">Mis Posts</a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Lista de posts -->
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Blog</h2>
+                {% if query %}
+                    <span class="badge bg-info">Búsqueda: "{{ query }}"</span>
+                {% endif %}
+            </div>
+            
+            {% if page_obj %}
+                <div class="row">
+                    {% for post in page_obj %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                {% if post.imagen %}
+                                    <img src="{{ post.imagen.url }}" class="card-img-top" alt="{{ post.titulo }}" style="height: 200px; object-fit: cover;">
+                                {% else %}
+                                    <div class="card-img-top bg-gradient" style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                                        📝
+                                    </div>
+                                {% endif %}
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="card-title">{{ post.titulo|truncatewords:8 }}</h5>
+                                    <p class="card-text flex-grow-1">{{ post.contenido|truncatewords:20|striptags }}</p>
+                                    <div class="mt-auto">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="text-muted">
+                                                Por <strong>{{ post.autor.get_full_name|default:post.autor.username }}</strong>
+                                            </small>
+                                            <small class="text-muted">👁️ {{ post.visitas }}</small>
+                                        </div>
+                                        {% if post.categoria %}
+                                            <span class="badge bg-secondary mb-2">{{ post.categoria.nombre }}</span>
+                                        {% endif %}
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">{{ post.fecha_creacion|date:"d/m/Y" }}</small>
+                                            <a href="{% url 'detalle_post' post.slug %}" class="btn btn-sm btn-primary">Leer más</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Paginación -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}{% if orden %}&orden={{ orden }}{% endif %}">Anterior</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}{% if orden %}&orden={{ orden }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}{% if orden %}&orden={{ orden }}{% endif %}">Siguiente</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <h4>No hay posts disponibles</h4>
+                    <p>No se encontraron posts con los criterios de búsqueda seleccionados.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

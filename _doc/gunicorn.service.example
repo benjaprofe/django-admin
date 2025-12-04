@@ -1,0 +1,30 @@
+# Archivo de ejemplo de servicio systemd para Gunicorn
+# Copiar a /etc/systemd/system/gunicorn.service y ajustar rutas
+
+[Unit]
+Description=gunicorn daemon for proyecto Django
+After=network.target
+
+[Service]
+# Usuario y grupo (ajustar según tu configuración)
+User=www-data
+Group=www-data
+
+# Directorio de trabajo (AJUSTAR RUTA)
+WorkingDirectory=/var/www/proyecto
+
+# Comando para iniciar Gunicorn (AJUSTAR RUTAS)
+ExecStart=/var/www/proyecto/venv/bin/gunicorn \
+    --config /var/www/proyecto/gunicorn_config.py \
+    proyecto.wsgi:application
+
+# Reiniciar automáticamente
+Restart=always
+RestartSec=3
+
+# Límites de recursos (opcional)
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+

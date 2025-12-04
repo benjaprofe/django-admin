@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Post - Blog{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <h3 class="mb-0">Crear Nuevo Post</h3>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título *</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required placeholder="Escribe un título atractivo">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="categoria" class="form-label">Categoría</label>
+                        <select class="form-select" id="categoria" name="categoria">
+                            <option value="">Sin categoría</option>
+                            {% for categoria in categorias %}
+                                <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="contenido" class="form-label">Contenido *</label>
+                        <textarea class="form-control" id="contenido" name="contenido" rows="12" required placeholder="Escribe el contenido de tu post aquí..."></textarea>
+                        <small class="form-text text-muted">Puedes usar saltos de línea para formatear tu texto.</small>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="publicado" name="publicado">
+                        <label class="form-check-label" for="publicado">
+                            Publicar inmediatamente
+                        </label>
+                        <small class="form-text text-muted d-block">Si no marcas esta opción, el post se guardará como borrador.</small>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Publicar Post</button>
+                        <a href="{% url 'lista_posts' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

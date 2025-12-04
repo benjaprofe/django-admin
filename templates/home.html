@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio - Proyecto Django{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <h2 class="mb-0">Bienvenido al Proyecto Django</h2>
+            </div>
+            <div class="card-body p-5">
+                {% if user.is_authenticated %}
+                    <div class="text-center mb-4">
+                        <h3>¡Hola, {{ user.get_full_name|default:user.username }}!</h3>
+                        <p class="text-muted">Has iniciado sesión correctamente.</p>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'lista_posts' %}" class="btn btn-primary">📝 Ir al Blog</a>
+                        <a href="{% url 'crear_post' %}" class="btn btn-success">✏️ Crear Post</a>
+                        <a href="{% url 'admin:index' %}" class="btn btn-outline-primary">⚙️ Administrador</a>
+                        <a href="{% url 'logout' %}" class="btn btn-danger">Cerrar Sesión</a>
+                    </div>
+                    <hr>
+                    <div class="mt-4">
+                        <h5>Información del Usuario:</h5>
+                        <ul class="list-group">
+                            <li class="list-group-item"><strong>Usuario:</strong> {{ user.username }}</li>
+                            <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
+                            <li class="list-group-item"><strong>Nombre:</strong> {{ user.get_full_name|default:"No especificado" }}</li>
+                            <li class="list-group-item"><strong>Último acceso:</strong> {{ user.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <div class="text-center">
+                        <h3>Bienvenido</h3>
+                        <p class="text-muted">Por favor, inicia sesión o regístrate para continuar.</p>
+                        <div class="d-grid gap-2 col-6 mx-auto mt-4">
+                            <a href="{% url 'login' %}" class="btn btn-primary">Iniciar Sesión</a>
+                            <a href="{% url 'registro' %}" class="btn btn-outline-primary">Registrarse</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
