@@ -9,27 +9,59 @@ Esta guía explica cómo configurar Apache HTTP Server para servir una aplicaci�
 - mod_wsgi instalado
 - Acceso root/sudo al servidor
 
-## Instalación de mod_wsgi
+## Instalación de Apache y mod_wsgi
 
 ### Ubuntu/Debian
+
+**Instalar Apache:**
 ```bash
-sudo apt-get update
-sudo apt-get install apache2 libapache2-mod-wsgi-py3
+# Actualizar lista de paquetes
+sudo apt update
+
+# Instalar Apache
+sudo apt install -y apache2
+
+# Verificar instalación
+sudo apache2 -v
+sudo systemctl status apache2
+```
+
+**Instalar mod_wsgi:**
+```bash
+# Instalar mod_wsgi para Python 3
+sudo apt install -y libapache2-mod-wsgi-py3
+
+# Habilitar módulo WSGI
 sudo a2enmod wsgi
+
+# Verificar que el módulo está habilitado
+apache2ctl -M | grep wsgi
 ```
 
-### CentOS/RHEL
+**Habilitar módulos necesarios:**
 ```bash
-sudo yum install httpd mod_wsgi python3
+# Habilitar módulos requeridos
+sudo a2enmod rewrite
+sudo a2enmod headers
+
+# Recargar Apache
+sudo systemctl reload apache2
 ```
 
-### macOS (con Homebrew)
+**Verificar instalación:**
 ```bash
-brew install mod_wsgi
-```
+# Ver versión de Apache
+apache2 -v
 
-### Windows
-Descargar e instalar desde: https://www.lfd.uci.edu/~gohlke/pythonlibs/#mod_wsgi
+# Ver módulos habilitados
+apache2ctl -M
+
+# Ver estado del servicio
+sudo systemctl status apache2
+
+# Verificar que está escuchando en puerto 80
+sudo netstat -tulpn | grep apache2
+```
 
 ## Configuración del Virtual Host
 
@@ -153,9 +185,41 @@ sudo nano /etc/httpd/conf.d/proyecto.conf
 
 ### 1. Obtener certificado SSL (Let's Encrypt)
 
+**Ubuntu/Debian:**
 ```bash
-sudo apt-get install certbot python3-certbot-apache
+# Instalar Certbot y plugin para Apache
+sudo apt update
+sudo apt install -y certbot python3-certbot-apache
+
+# Verificar instalación
+certbot --version
+
+# Obtener certificado (modo interactivo)
 sudo certbot --apache -d tudominio.com -d www.tudominio.com
+
+# O modo no interactivo (para scripts)
+sudo certbot --apache -d tudominio.com -d www.tudominio.com --non-interactive --agree-tos --email admin@tudominio.com
+```
+
+**Verificar certificado:**
+```bash
+# Ver certificados instalados
+sudo certbot certificates
+
+# Probar renovación (dry-run)
+sudo certbot renew --dry-run
+
+# Configurar renovación automática
+# Certbot crea un cron job automáticamente, verificar:
+sudo systemctl status certbot.timer
+```
+
+**Ubicación de certificados:**
+```bash
+# Los certificados se guardan en:
+/etc/letsencrypt/live/tudominio.com/
+# - fullchain.pem (certificado completo)
+# - privkey.pem (clave privada)
 ```
 
 ### 2. Configuración con SSL
@@ -248,14 +312,55 @@ python manage.py migrate
 ## Activación del Sitio
 
 ### Ubuntu/Debian
+
+**Habilitar el sitio:**
 ```bash
+# Habilitar el sitio (crea enlace simbólico)
 sudo a2ensite proyecto.conf
-sudo systemctl reload apache2
+
+# Verificar que el enlace se creó
+ls -la /etc/apache2/sites-enabled/
+
+# Deshabilitar sitio por defecto (opcional)
+sudo a2dissite 000-default.conf
 ```
 
-### CentOS/RHEL
+**Verificar configuración:**
 ```bash
-sudo systemctl restart httpd
+# Probar sintaxis de configuración
+sudo apache2ctl configtest
+
+# Si hay errores, verás:
+# Syntax error on line X
+# Si está bien, verás:
+# Syntax OK
+```
+
+**Recargar Apache:**
+```bash
+# Opción 1: Recargar sin interrumpir conexiones
+sudo systemctl reload apache2
+
+# Opción 2: Reiniciar completamente
+sudo systemctl restart apache2
+
+# Verificar estado
+sudo systemctl status apache2
+
+# Ver logs en tiempo real
+sudo tail -f /var/log/apache2/error.log
+```
+
+**Verificar que el sitio está activo:**
+```bash
+# Ver sitios habilitados
+ls -la /etc/apache2/sites-enabled/
+
+# Probar desde el servidor
+curl http://localhost
+
+# Ver configuración activa
+sudo apache2ctl -S
 ```
 
 ## Verificación

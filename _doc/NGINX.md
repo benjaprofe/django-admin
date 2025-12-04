@@ -21,29 +21,78 @@ Nginx sirve archivos estáticos/media y actúa como proxy reverso para las petic
 
 ### Ubuntu/Debian
 ```bash
-sudo apt-get update
-sudo apt-get install nginx
+# Actualizar lista de paquetes
+sudo apt update
+
+# Instalar Nginx
+sudo apt install -y nginx
+
+# Verificar instalación
+sudo nginx -v
+
+# Verificar que el servicio esté corriendo
+sudo systemctl status nginx
+
+# Habilitar inicio automático
+sudo systemctl enable nginx
 ```
 
-### CentOS/RHEL
+**Ubuntu específico:**
 ```bash
-sudo yum install nginx
+# En Ubuntu, Nginx se inicia automáticamente después de la instalación
+# Verificar puertos
+sudo netstat -tulpn | grep nginx
 ```
 
-### macOS (con Homebrew)
+**Debian específico:**
 ```bash
-brew install nginx
+# En Debian, puede que necesites iniciar el servicio manualmente
+sudo systemctl start nginx
+sudo systemctl enable nginx
+```
+
+### Verificar Instalación
+```bash
+# Probar configuración
+sudo nginx -t
+
+# Ver versión
+nginx -v
+
+# Ver estado del servicio
+sudo systemctl status nginx
+
+# Ver logs
+sudo tail -f /var/log/nginx/error.log
 ```
 
 ## Instalación de Gunicorn
 
+**En el entorno virtual del proyecto:**
 ```bash
+# Activar entorno virtual
+cd /var/www/proyecto
+source venv/bin/activate
+
+# Instalar Gunicorn
 pip install gunicorn
+
+# O agregar a requirements.txt y luego:
+pip install -r requirements.txt
 ```
 
-O agregar a `requirements.txt`:
+**Agregar a `requirements.txt`:**
 ```
 gunicorn>=21.2.0
+```
+
+**Verificar instalación:**
+```bash
+# Verificar que Gunicorn esté instalado
+gunicorn --version
+
+# O sin activar el entorno virtual
+/var/www/proyecto/venv/bin/gunicorn --version
 ```
 
 ## Configuración de Nginx
@@ -184,9 +233,41 @@ server {
 
 ### 1. Obtener certificado SSL (Let's Encrypt)
 
+**Ubuntu/Debian:**
 ```bash
-sudo apt-get install certbot python3-certbot-nginx
+# Instalar Certbot y plugin para Nginx
+sudo apt update
+sudo apt install -y certbot python3-certbot-nginx
+
+# Verificar instalación
+certbot --version
+
+# Obtener certificado (modo interactivo)
 sudo certbot --nginx -d tudominio.com -d www.tudominio.com
+
+# O modo no interactivo (para scripts)
+sudo certbot --nginx -d tudominio.com -d www.tudominio.com --non-interactive --agree-tos --email admin@tudominio.com
+```
+
+**Verificar certificado:**
+```bash
+# Ver certificados instalados
+sudo certbot certificates
+
+# Probar renovación (dry-run)
+sudo certbot renew --dry-run
+
+# Configurar renovación automática
+# Certbot crea un cron job automáticamente, verificar:
+sudo systemctl status certbot.timer
+```
+
+**Ubicación de certificados:**
+```bash
+# Los certificados se guardan en:
+/etc/letsencrypt/live/tudominio.com/
+# - fullchain.pem (certificado completo)
+# - privkey.pem (clave privada)
 ```
 
 ### 2. Configuración manual con SSL
@@ -252,10 +333,31 @@ user = "www-data"
 group = "www-data"
 ```
 
-### 2. Crear servicio systemd
+### 2. Crear directorios de logs
 
-Crea `/etc/systemd/system/gunicorn.service`:
+**Ubuntu/Debian:**
+```bash
+# Crear directorio de logs para Gunicorn
+sudo mkdir -p /var/log/gunicorn
 
+# Crear directorio para PID files
+sudo mkdir -p /var/run/gunicorn
+
+# Asignar permisos
+sudo chown www-data:www-data /var/log/gunicorn
+sudo chown www-data:www-data /var/run/gunicorn
+sudo chmod 755 /var/log/gunicorn
+sudo chmod 755 /var/run/gunicorn
+```
+
+### 3. Crear servicio systemd
+
+**Crear archivo de servicio:**
+```bash
+sudo nano /etc/systemd/system/gunicorn.service
+```
+
+**Contenido del archivo:**
 ```ini
 [Unit]
 Description=gunicorn daemon for proyecto Django
@@ -271,38 +373,104 @@ ExecStart=/var/www/proyecto/venv/bin/gunicorn \
 
 Restart=always
 RestartSec=3
+LimitNOFILE=65535
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-### 3. Activar y iniciar el servicio
+### 4. Activar y gestionar el servicio
 
+**Ubuntu/Debian:**
 ```bash
+# Recargar configuración de systemd
 sudo systemctl daemon-reload
+
+# Habilitar inicio automático
 sudo systemctl enable gunicorn
+
+# Iniciar servicio
 sudo systemctl start gunicorn
+
+# Verificar estado
 sudo systemctl status gunicorn
+
+# Ver logs del servicio
+sudo journalctl -u gunicorn -f
+
+# Comandos útiles
+sudo systemctl restart gunicorn  # Reiniciar
+sudo systemctl stop gunicorn     # Detener
+```
+
+**Verificar que está funcionando:**
+```bash
+# Ver procesos de Gunicorn
+ps aux | grep gunicorn
+
+# Ver puerto 8000
+sudo netstat -tulpn | grep 8000
+# o
+sudo ss -tulpn | grep 8000
+
+# Probar conexión
+curl http://127.0.0.1:8000
 ```
 
 ## Activación del Sitio en Nginx
 
-### 1. Crear enlace simbólico
+### 1. Crear enlace simbólico (Ubuntu/Debian)
 
 ```bash
+# Crear enlace simbólico
 sudo ln -s /etc/nginx/sites-available/proyecto /etc/nginx/sites-enabled/
+
+# Verificar que el enlace se creó
+ls -la /etc/nginx/sites-enabled/
+
+# Eliminar sitio por defecto (opcional)
+sudo rm /etc/nginx/sites-enabled/default
 ```
 
 ### 2. Verificar configuración
 
 ```bash
+# Probar sintaxis de configuración
 sudo nginx -t
+
+# Si hay errores, verás algo como:
+# nginx: [error] invalid parameter
+# Si está bien, verás:
+# nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
 
 ### 3. Recargar Nginx
 
 ```bash
+# Opción 1: Recargar sin interrumpir conexiones
 sudo systemctl reload nginx
+
+# Opción 2: Reiniciar completamente
+sudo systemctl restart nginx
+
+# Verificar estado
+sudo systemctl status nginx
+
+# Ver logs en tiempo real
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 4. Verificar que el sitio está activo
+
+```bash
+# Ver sitios habilitados
+ls -la /etc/nginx/sites-enabled/
+
+# Probar desde el servidor
+curl http://localhost
+
+# Ver configuración activa
+sudo nginx -T | grep server_name
 ```
 
 ## Preparación del Proyecto Django
@@ -365,47 +533,165 @@ python manage.py migrate
 
 ## Verificación
 
-1. Verifica que Nginx esté corriendo:
+**1. Verificar servicios:**
 ```bash
+# Verificar Nginx
 sudo systemctl status nginx
-```
+sudo nginx -t
 
-2. Verifica que Gunicorn esté corriendo:
-```bash
+# Verificar Gunicorn
 sudo systemctl status gunicorn
+ps aux | grep gunicorn
 ```
 
-3. Verifica los logs:
+**2. Verificar logs (Ubuntu/Debian):**
 ```bash
+# Logs de Nginx
 sudo tail -f /var/log/nginx/proyecto_error.log
+sudo tail -f /var/log/nginx/proyecto_access.log
+
+# Logs de Gunicorn
 sudo tail -f /var/log/gunicorn/error.log
+sudo tail -f /var/log/gunicorn/access.log
+
+# Logs del sistema (systemd)
+sudo journalctl -u gunicorn -f
+sudo journalctl -u nginx -f
 ```
 
-4. Prueba la aplicación: `http://tudominio.com`
+**3. Verificar conectividad:**
+```bash
+# Desde el servidor
+curl -I http://localhost
+curl -I http://127.0.0.1:8000
+
+# Verificar puertos abiertos
+sudo netstat -tulpn | grep -E 'nginx|gunicorn'
+```
+
+**4. Probar la aplicación:**
+```bash
+# Desde el navegador o con curl
+curl http://tudominio.com
+# o
+curl -I http://tudominio.com
+```
 
 ## Solución de Problemas Comunes
 
 ### Error 502 Bad Gateway
-- Verifica que Gunicorn esté corriendo: `sudo systemctl status gunicorn`
-- Verifica que el puerto en Nginx coincida con Gunicorn
-- Revisa los logs: `sudo tail -f /var/log/nginx/error.log`
+
+**Causas comunes:**
+- Gunicorn no está corriendo
+- Puerto incorrecto en la configuración
+- Problemas de permisos
+
+**Solución:**
+```bash
+# Verificar que Gunicorn está corriendo
+sudo systemctl status gunicorn
+ps aux | grep gunicorn
+
+# Verificar puerto
+sudo netstat -tulpn | grep 8000
+
+# Verificar configuración de Nginx
+sudo nginx -t
+sudo grep proxy_pass /etc/nginx/sites-available/proyecto
+
+# Revisar logs
+sudo tail -50 /var/log/nginx/error.log
+sudo journalctl -u gunicorn -n 50
+```
 
 ### Archivos estáticos no se cargan
-- Ejecuta `python manage.py collectstatic`
-- Verifica permisos: `sudo chown -R www-data:www-data /ruta/al/proyecto/staticfiles`
-- Verifica que la ruta en Nginx sea correcta
+
+**Solución:**
+```bash
+# Recopilar archivos estáticos
+cd /var/www/proyecto
+sudo -u proyecto venv/bin/python manage.py collectstatic --noinput
+
+# Verificar permisos
+sudo chown -R www-data:www-data /var/www/proyecto/staticfiles
+sudo chmod -R 755 /var/www/proyecto/staticfiles
+
+# Verificar ruta en Nginx
+sudo grep -A 5 "location /static" /etc/nginx/sites-available/proyecto
+
+# Verificar que el directorio existe
+ls -la /var/www/proyecto/staticfiles/
+```
 
 ### Error de permisos
+
+**Solución completa:**
 ```bash
-sudo chown -R www-data:www-data /ruta/al/proyecto
-sudo chmod -R 755 /ruta/al/proyecto
-sudo chmod -R 775 /ruta/al/proyecto/media
+# Establecer propietario correcto
+sudo chown -R proyecto:www-data /var/www/proyecto
+
+# Permisos de directorios
+sudo find /var/www/proyecto -type d -exec chmod 755 {} \;
+
+# Permisos de archivos
+sudo find /var/www/proyecto -type f -exec chmod 644 {} \;
+
+# Permisos especiales para media y logs
+sudo chmod -R 775 /var/www/proyecto/media
+sudo chmod -R 775 /var/www/proyecto/logs
+
+# Verificar permisos
+ls -la /var/www/proyecto/
 ```
 
 ### Gunicorn no inicia
-- Verifica que el entorno virtual esté activado
-- Verifica que todas las dependencias estén instaladas
-- Revisa los logs: `sudo journalctl -u gunicorn -n 50`
+
+**Diagnóstico:**
+```bash
+# Ver logs detallados
+sudo journalctl -u gunicorn -n 100 --no-pager
+
+# Verificar configuración
+sudo -u www-data /var/www/proyecto/venv/bin/gunicorn --check-config proyecto.wsgi:application
+
+# Verificar que el entorno virtual funciona
+sudo -u www-data /var/www/proyecto/venv/bin/python --version
+
+# Verificar dependencias
+sudo -u www-data /var/www/proyecto/venv/bin/pip list
+```
+
+**Solución:**
+```bash
+# Reinstalar dependencias si es necesario
+cd /var/www/proyecto
+sudo -u proyecto venv/bin/pip install --upgrade -r requirements.txt
+
+# Verificar que el archivo wsgi.py existe
+ls -la /var/www/proyecto/proyecto/wsgi.py
+
+# Probar Gunicorn manualmente
+sudo -u www-data /var/www/proyecto/venv/bin/gunicorn proyecto.wsgi:application --bind 127.0.0.1:8000
+```
+
+### Nginx no recarga
+
+**Solución:**
+```bash
+# Verificar sintaxis
+sudo nginx -t
+
+# Si hay errores, ver detalles
+sudo nginx -T 2>&1 | grep error
+
+# Forzar recarga
+sudo systemctl reload nginx
+# o
+sudo systemctl restart nginx
+
+# Ver logs
+sudo tail -f /var/log/nginx/error.log
+```
 
 ## Optimización
 

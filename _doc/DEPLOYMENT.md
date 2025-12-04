@@ -14,35 +14,103 @@ Esta guía proporciona una visión general del proceso de despliegue de la aplic
 
 ### 1. Servidor
 
-- **Sistema Operativo**: Ubuntu 20.04 LTS o superior (recomendado)
+- **Sistema Operativo**: Ubuntu 20.04 LTS / 22.04 LTS o Debian 11/12 (recomendado)
 - **RAM**: Mínimo 1GB, recomendado 2GB+
 - **CPU**: 1 core mínimo, 2+ cores recomendado
 - **Disco**: 20GB mínimo
 
-### 2. Software Requerido
+### 2. Actualización del Sistema
 
+**Ubuntu:**
 ```bash
-# Actualizar sistema
-sudo apt-get update && sudo apt-get upgrade -y
+# Actualizar lista de paquetes
+sudo apt update
 
-# Instalar Python y herramientas
-sudo apt-get install python3 python3-pip python3-venv python3-dev
+# Actualizar sistema completo
+sudo apt upgrade -y
 
-# Instalar PostgreSQL (recomendado para producción)
-sudo apt-get install postgresql postgresql-contrib
-
-# Instalar Nginx o Apache
-sudo apt-get install nginx  # o apache2
+# Instalar herramientas básicas
+sudo apt install -y software-properties-common curl wget git
 ```
 
-### 3. Configuración del Usuario
-
+**Debian:**
 ```bash
-# Crear usuario para la aplicación
-sudo adduser --system --group --home /var/www/proyecto proyecto
+# Actualizar lista de paquetes
+sudo apt update
+
+# Actualizar sistema completo
+sudo apt upgrade -y
+
+# Instalar herramientas básicas
+sudo apt install -y software-properties-common curl wget git
+```
+
+### 3. Instalación de Software Requerido
+
+**Python y herramientas de desarrollo:**
+```bash
+# Ubuntu/Debian
+sudo apt install -y python3 python3-pip python3-venv python3-dev
+
+# Verificar instalación
+python3 --version
+pip3 --version
+```
+
+**PostgreSQL (recomendado para producción):**
+```bash
+# Ubuntu/Debian
+sudo apt install -y postgresql postgresql-contrib
+
+# Verificar instalación
+sudo systemctl status postgresql
+```
+
+**Servidor Web (elegir uno):**
+```bash
+# Opción 1: Nginx (recomendado)
+sudo apt install -y nginx
+
+# Opción 2: Apache
+sudo apt install -y apache2
+
+# Verificar instalación
+sudo systemctl status nginx  # o apache2
+```
+
+**Gunicorn (para producción con Nginx):**
+```bash
+# Se instalará en el entorno virtual del proyecto
+# Ver sección de instalación del proyecto
+```
+
+### 4. Configuración del Usuario y Permisos
+
+**Crear usuario para la aplicación:**
+```bash
+# Crear usuario del sistema sin shell de login
+sudo adduser --system --group --home /var/www/proyecto --no-create-home proyecto
+
+# O crear usuario con shell (si necesitas acceso SSH)
+# sudo adduser --disabled-password --gecos "" proyecto
 
 # Agregar usuario al grupo www-data
 sudo usermod -a -G www-data proyecto
+
+# Verificar grupos del usuario
+groups proyecto
+```
+
+**Crear directorio del proyecto:**
+```bash
+# Crear directorio
+sudo mkdir -p /var/www/proyecto
+
+# Asignar propietario
+sudo chown proyecto:www-data /var/www/proyecto
+
+# Establecer permisos
+sudo chmod 755 /var/www/proyecto
 ```
 
 ## Configuración de Django para Producción
@@ -150,41 +218,87 @@ LOGGING = {
 }
 ```
 
-### 3. Instalación y Configuración
+### 3. Instalación y Configuración del Proyecto
 
+**Subir el proyecto al servidor:**
 ```bash
-# Clonar o subir el proyecto
+# Opción 1: Clonar desde Git
 cd /var/www
 sudo git clone https://github.com/tu-usuario/proyecto.git
-# o subir archivos vía SFTP/SCP
+sudo chown -R proyecto:www-data proyecto
+
+# Opción 2: Subir archivos vía SCP
+# scp -r proyecto/ usuario@servidor:/var/www/
+
+# Opción 3: Usar rsync
+# rsync -avz proyecto/ usuario@servidor:/var/www/proyecto/
+```
+
+**Configurar el proyecto:**
+```bash
+# Cambiar al directorio del proyecto
+cd /var/www/proyecto
+
+# Cambiar propietario
+sudo chown -R proyecto:www-data /var/www/proyecto
 
 # Crear entorno virtual
-cd proyecto
-python3 -m venv venv
+sudo -u proyecto python3 -m venv venv
+
+# Activar entorno virtual
 source venv/bin/activate
+# O ejecutar comandos como: sudo -u proyecto venv/bin/pip install ...
 
 # Instalar dependencias
-pip install -r requirements.txt
-pip install gunicorn python-dotenv
+sudo -u proyecto venv/bin/pip install --upgrade pip
+sudo -u proyecto venv/bin/pip install -r requirements.txt
+sudo -u proyecto venv/bin/pip install gunicorn python-dotenv
 
-# Configurar base de datos
-sudo -u postgres createdb proyecto_db
-sudo -u postgres createuser proyecto_user
-sudo -u postgres psql -c "ALTER USER proyecto_user WITH PASSWORD 'password-segura';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE proyecto_db TO proyecto_user;"
+# Verificar instalación
+sudo -u proyecto venv/bin/python manage.py --version
+```
+
+**Configurar PostgreSQL:**
+```bash
+# Acceder a PostgreSQL como usuario postgres
+sudo -u postgres psql
+
+# Dentro de psql, ejecutar:
+CREATE DATABASE proyecto_db;
+CREATE USER proyecto_user WITH PASSWORD 'password-segura-aqui';
+ALTER ROLE proyecto_user SET client_encoding TO 'utf8';
+ALTER ROLE proyecto_user SET default_transaction_isolation TO 'read committed';
+ALTER ROLE proyecto_user SET timezone TO 'UTC';
+GRANT ALL PRIVILEGES ON DATABASE proyecto_db TO proyecto_user;
+\q
+
+# Verificar conexión
+sudo -u postgres psql -U proyecto_user -d proyecto_db -h localhost
+```
+
+**Configurar Django:**
+```bash
+# Crear archivo .env
+sudo -u proyecto nano /var/www/proyecto/.env
+# Agregar variables de entorno (ver sección anterior)
 
 # Ejecutar migraciones
-python manage.py migrate
+cd /var/www/proyecto
+sudo -u proyecto venv/bin/python manage.py migrate
 
 # Crear superusuario
-python manage.py createsuperuser
+sudo -u proyecto venv/bin/python manage.py createsuperuser
 
 # Recopilar archivos estáticos
-python manage.py collectstatic --noinput
+sudo -u proyecto venv/bin/python manage.py collectstatic --noinput
 
-# Crear directorio de logs
-mkdir -p logs
-chmod 755 logs
+# Crear directorios necesarios
+sudo mkdir -p /var/www/proyecto/logs
+sudo mkdir -p /var/www/proyecto/media
+sudo chown -R proyecto:www-data /var/www/proyecto/logs
+sudo chown -R proyecto:www-data /var/www/proyecto/media
+sudo chmod -R 775 /var/www/proyecto/media
+sudo chmod -R 755 /var/www/proyecto/logs
 ```
 
 ## Elección del Servidor Web
@@ -224,12 +338,44 @@ chmod 755 logs
 
 ### Configuración del Firewall
 
+**Ubuntu (UFW):**
 ```bash
-# UFW (Ubuntu)
+# Verificar estado
+sudo ufw status
+
+# Permitir SSH (importante hacerlo primero)
 sudo ufw allow 22/tcp
+
+# Permitir HTTP y HTTPS
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
+
+# Habilitar firewall
 sudo ufw enable
+
+# Verificar reglas
+sudo ufw status numbered
+```
+
+**Debian (iptables o nftables):**
+```bash
+# Si usas iptables
+sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+sudo iptables -A INPUT -j DROP
+
+# Guardar reglas (Debian)
+sudo apt install iptables-persistent
+sudo netfilter-persistent save
+```
+
+**Verificar conexiones:**
+```bash
+# Ver puertos abiertos
+sudo netstat -tulpn | grep LISTEN
+# o
+sudo ss -tulpn | grep LISTEN
 ```
 
 ### Permisos de Archivos
@@ -253,35 +399,97 @@ Monitorear regularmente:
 
 ### 2. Actualizaciones
 
+**Actualizar sistema operativo:**
 ```bash
-# Actualizar sistema
-sudo apt-get update && sudo apt-get upgrade -y
+# Ubuntu/Debian
+sudo apt update
+sudo apt upgrade -y
 
-# Actualizar dependencias Python
-source venv/bin/activate
-pip install --upgrade -r requirements.txt
+# Actualizaciones de seguridad automáticas (opcional)
+sudo apt install unattended-upgrades
+sudo dpkg-reconfigure -plow unattended-upgrades
+```
 
-# Reiniciar servicios
+**Actualizar dependencias Python:**
+```bash
+cd /var/www/proyecto
+sudo -u proyecto venv/bin/pip install --upgrade pip
+sudo -u proyecto venv/bin/pip install --upgrade -r requirements.txt
+
+# Verificar cambios
+sudo -u proyecto venv/bin/pip list --outdated
+```
+
+**Reiniciar servicios:**
+```bash
+# Reiniciar Gunicorn
 sudo systemctl restart gunicorn
-sudo systemctl restart nginx
+sudo systemctl status gunicorn
+
+# Reiniciar servidor web
+sudo systemctl restart nginx  # o apache2
+sudo systemctl status nginx   # o apache2
 ```
 
 ### 3. Backup
 
+**Crear script de backup:**
 ```bash
-# Script de backup
+# Crear directorio de backups
+sudo mkdir -p /backups/proyecto
+sudo chown proyecto:proyecto /backups/proyecto
+
+# Crear script
+sudo nano /usr/local/bin/backup_proyecto.sh
+```
+
+**Contenido del script de backup:**
+```bash
 #!/bin/bash
 BACKUP_DIR="/backups/proyecto"
 DATE=$(date +%Y%m%d_%H%M%S)
+PROJECT_DIR="/var/www/proyecto"
 
-# Backup de base de datos
-pg_dump -U proyecto_user proyecto_db > $BACKUP_DIR/db_$DATE.sql
+# Crear directorio si no existe
+mkdir -p $BACKUP_DIR
+
+# Backup de base de datos PostgreSQL
+PGPASSWORD='password-segura' pg_dump -U proyecto_user -h localhost proyecto_db > $BACKUP_DIR/db_$DATE.sql
+
+# Comprimir backup de base de datos
+gzip $BACKUP_DIR/db_$DATE.sql
 
 # Backup de archivos media
-tar -czf $BACKUP_DIR/media_$DATE.tar.gz /var/www/proyecto/media
+tar -czf $BACKUP_DIR/media_$DATE.tar.gz $PROJECT_DIR/media
+
+# Backup de archivos estáticos (opcional)
+tar -czf $BACKUP_DIR/staticfiles_$DATE.tar.gz $PROJECT_DIR/staticfiles
+
+# Backup de archivo .env (importante)
+cp $PROJECT_DIR/.env $BACKUP_DIR/env_$DATE.backup
 
 # Mantener solo últimos 7 días
 find $BACKUP_DIR -type f -mtime +7 -delete
+
+# Log del backup
+echo "$(date): Backup completado - $DATE" >> $BACKUP_DIR/backup.log
+```
+
+**Hacer el script ejecutable:**
+```bash
+sudo chmod +x /usr/local/bin/backup_proyecto.sh
+```
+
+**Configurar backup automático con cron:**
+```bash
+# Editar crontab
+sudo crontab -e
+
+# Agregar línea para backup diario a las 2 AM
+0 2 * * * /usr/local/bin/backup_proyecto.sh
+
+# Verificar crontab
+sudo crontab -l
 ```
 
 ### 4. Monitoreo de Rendimiento

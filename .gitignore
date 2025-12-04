@@ -45,3 +45,6 @@ Thumbs.db
 # Configuración generada
 config_generado/
 
+# Credenciales de usuarios fake
+credenciales_usuarios.txt
+

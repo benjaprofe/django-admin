@@ -6,6 +6,7 @@ import random
 from django.utils.text import slugify
 from django.utils import timezone
 from datetime import timedelta
+from pathlib import Path
 
 fake = Faker('es_ES')  # Español de España
 
@@ -55,6 +56,7 @@ class Command(BaseCommand):
         # Crear usuarios
         self.stdout.write(f'\nCreando {num_usuarios} usuarios...')
         usuarios_creados = []
+        credenciales = []  # Para guardar las contraseñas
         
         for i in range(num_usuarios):
             username = fake.user_name()
@@ -70,21 +72,59 @@ class Command(BaseCommand):
             first_name = fake.first_name()
             last_name = fake.last_name()
             
+            # Generar contraseña fake única
+            password = fake.password(
+                length=12,
+                special_chars=True,
+                digits=True,
+                upper_case=True,
+                lower_case=True
+            )
+            
             usuario = User.objects.create_user(
                 username=username,
                 email=email,
-                password='password123',  # Contraseña por defecto para todos
+                password=password,
                 first_name=first_name,
                 last_name=last_name,
                 is_active=True,
                 date_joined=fake.date_time_between(start_date='-2y', end_date='now', tzinfo=timezone.UTC)
             )
             usuarios_creados.append(usuario)
+            credenciales.append({
+                'username': username,
+                'email': email,
+                'password': password,
+                'nombre': f'{first_name} {last_name}'
+            })
             
             if (i + 1) % 10 == 0:
                 self.stdout.write(f'  ✓ {i + 1}/{num_usuarios} usuarios creados')
-
+        
         self.stdout.write(self.style.SUCCESS(f'\n✓ {len(usuarios_creados)} usuarios creados exitosamente'))
+        
+        # Guardar credenciales en archivo
+        if credenciales:
+            base_dir = Path(__file__).resolve().parent.parent.parent.parent
+            credenciales_file = base_dir / 'credenciales_usuarios.txt'
+            
+            with open(credenciales_file, 'w', encoding='utf-8') as f:
+                f.write('=' * 70 + '\n')
+                f.write('CREDENCIALES DE USUARIOS GENERADOS\n')
+                f.write('=' * 70 + '\n\n')
+                f.write(f'Total de usuarios: {len(credenciales)}\n')
+                f.write(f'Generado el: {timezone.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n')
+                f.write('-' * 70 + '\n\n')
+                
+                for idx, cred in enumerate(credenciales, 1):
+                    f.write(f'Usuario #{idx}:\n')
+                    f.write(f'  Username: {cred["username"]}\n')
+                    f.write(f'  Email: {cred["email"]}\n')
+                    f.write(f'  Nombre: {cred["nombre"]}\n')
+                    f.write(f'  Contraseña: {cred["password"]}\n')
+                    f.write('-' * 70 + '\n\n')
+            
+            self.stdout.write(self.style.SUCCESS(f'✓ Credenciales guardadas en: {credenciales_file}'))
 
         # Crear posts
         self.stdout.write(f'\nCreando {num_posts} posts...')
@@ -153,5 +193,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'  - Posts creados: {posts_creados}'))
         self.stdout.write(self.style.SUCCESS(f'  - Categorías: {len(categorias)}'))
         self.stdout.write(self.style.SUCCESS('='*50))
-        self.stdout.write(self.style.WARNING('\nNota: Todos los usuarios tienen la contraseña: password123'))
+        self.stdout.write(self.style.WARNING('\n⚠️  IMPORTANTE: Las contraseñas de los usuarios se han guardado en el archivo credenciales_usuarios.txt'))
+        self.stdout.write(self.style.WARNING('    Cada usuario tiene una contraseña única generada automáticamente.'))
 
